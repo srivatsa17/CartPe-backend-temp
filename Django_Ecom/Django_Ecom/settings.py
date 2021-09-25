@@ -91,6 +91,10 @@ DATABASES = {
     }
 }
 
+REST_FRAMEWORK = {
+    'NON_FIELD_ERRORS_KEY' : 'error' 
+}
+
 # for item, value in os.environ.items():
 #     print('{}: {}'.format(item, value))
 
