@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-239(s=4nk5(9un6xs0+#%0i8evg9li^&^u3t#0f5=wu7fwrh*d'
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_yasg',
     'auth_service',
 ]
 
@@ -98,8 +99,8 @@ REST_FRAMEWORK = {
     )
 }
 
-for item, value in os.environ.items():
-    print('{}: {}'.format(item, value))
+# for item, value in os.environ.items():
+#     print('{}: {}'.format(item, value))
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators

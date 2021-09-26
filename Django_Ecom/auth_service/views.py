@@ -1,9 +1,9 @@
+import os
 from django.shortcuts import render
-from rest_framework import generics
+from rest_framework import generics, status, views
 from rest_framework.serializers import Serializer
-from .serializers import RegisterSerializer 
+from .serializers import RegisterSerializer, EmailVerificationSerializer 
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
 from .utils import Util
@@ -11,6 +11,8 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 import jwt
 from django.conf import settings
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 # Create your views here.
 
 class RegisterView(generics.GenericAPIView):
@@ -32,7 +34,7 @@ class RegisterView(generics.GenericAPIView):
         current_site = get_current_site(request).domain
         relativeLink = reverse('email-verify')
         absurl = 'http://'+current_site+relativeLink+"?token="+str(token)
-        email_body = 'Hi ' + user.username + ',\nUser link below to verify your email \n' + absurl
+        email_body = 'Hi ' + user.username + ',\nUse link below to verify your email \n' + absurl
 
         data = {
             'email_body': email_body,
@@ -48,12 +50,23 @@ class RegisterView(generics.GenericAPIView):
         ) 
 
 
-class VerifyEmail(generics.GenericAPIView):
+class VerifyEmail(views.APIView):
     
+    serializer_class = EmailVerificationSerializer
+
+    token_param_config = openapi.Parameter(
+                            'token', 
+                            in_=openapi.IN_QUERY,
+                            description = 'Add token to verify your email-id',
+                            type = openapi.TYPE_STRING
+                        )
+
+    @swagger_auto_schema(manual_parameters=[token_param_config])
     def get(self, request):
         token = request.GET.get('token')
         try:
-            payload = jwt.decode(token, settings.SECRET_KEY)
+            payload = jwt.decode(token, os.environ.get('SECRET_KEY'), algorithms=["HS256"])
+            print(payload)
             user = User.objects.get(id = payload['user_id'])
 
             if not user.is_verified:
