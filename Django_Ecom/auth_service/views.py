@@ -49,7 +49,6 @@ class RegisterView(generics.GenericAPIView):
             status = status.HTTP_201_CREATED
         ) 
 
-
 class VerifyEmail(views.APIView):
     
     serializer_class = EmailVerificationSerializer
