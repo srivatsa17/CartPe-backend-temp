@@ -1,5 +1,4 @@
 import os
-from re import S
 from django.shortcuts import render
 from rest_framework import generics, status, views
 from rest_framework.permissions import AllowAny
@@ -120,10 +119,16 @@ class LogoutAPIView(views.APIView):
             refresh_token = request.data["refresh_token"]
             token = RefreshToken(refresh_token)
             token.blacklist()
-        except Exception:
             return Response(
                 {
                     'message':'logged out successfully and token blacklisted'
+                },
+                status = status.HTTP_200_OK
+            )
+        except Exception:
+            return Response(
+                {
+                    'message':'logout not successful'
                 },
                 status = status.HTTP_400_BAD_REQUEST
             )
