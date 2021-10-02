@@ -1,6 +1,8 @@
 import os
+from re import S
 from django.shortcuts import render
 from rest_framework import generics, status, views
+from rest_framework.permissions import AllowAny
 from rest_framework.serializers import Serializer
 from .serializers import RegisterSerializer, EmailVerificationSerializer, LoginSerializer
 from rest_framework.response import Response
@@ -13,6 +15,7 @@ import jwt
 from django.conf import settings
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+
 # Create your views here.
 
 class RegisterView(generics.GenericAPIView):
@@ -32,8 +35,9 @@ class RegisterView(generics.GenericAPIView):
         token = RefreshToken.for_user(user).access_token
 
         current_site = get_current_site(request).domain
-        relativeLink = reverse('email-verify')
-        absurl = 'http://'+current_site+relativeLink+"?token="+str(token)
+        # relativeLink = reverse('email-verify')
+        relativeLink = ''
+        absurl = 'http://'+current_site+"/"+"auth/email-verify/?token="+str(token)
         email_body = 'Hi ' + user.username + ',\nUse link below to verify your email \n' + absurl
 
         data = {
@@ -107,3 +111,19 @@ class LoginAPIView(generics.GenericAPIView):
             serializer.data,
             status = status.HTTP_200_OK
         )
+
+class LogoutAPIView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh_token"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except Exception:
+            return Response(
+                {
+                    'message':'logged out successfully and token blacklisted'
+                },
+                status = status.HTTP_400_BAD_REQUEST
+            )
