@@ -27,13 +27,6 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
 
-class EmailVerificationSerializer(serializers.ModelSerializer):
-    token = serializers.CharField(max_length = 555)
-
-    class Meta:
-        model = User
-        fields = ['token']
-
 class LoginSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(max_length = 255, min_length = 2, read_only = True)
     last_name = serializers.CharField(max_length = 255, min_length = 1, read_only = True)
@@ -67,4 +60,17 @@ class LoginSerializer(serializers.ModelSerializer):
             'tokens':user.tokens
         }
         
-        
+class EmailVerificationSerializer(serializers.ModelSerializer):
+    token = serializers.CharField(max_length = 555)
+
+    class Meta:
+        model = User
+        fields = ['token']
+
+class ChangePasswordSerializer(serializers.ModelSerializer):
+    old_password = serializers.CharField(required = True)
+    new_password = serializers.CharField(required = True)
+
+    class Meta:
+        model = User
+        fields = ['old_password', 'new_password']
