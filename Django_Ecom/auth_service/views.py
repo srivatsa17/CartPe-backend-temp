@@ -36,26 +36,23 @@ def get_user_from_token(token):
             
         else:
             response = {
-                'status': 'failure',
-                "message": "Invalid token",
-                "status code": status.HTTP_401_UNAUTHORIZED
+                "message": "Invalid token"
             }
 
-            return Response(response)
+            return Response(response, status = status.HTTP_401_UNAUTHORIZED)
 
         payload = jwt.decode(token, os.environ.get('SECRET_KEY'), algorithms=["HS256"])
         # print(payload)
         user = User.objects.get(id = payload['user_id'])
+        
         return user
     
     except Exception:
         response = {
-            'status': 'failure',
-            "message": "Invalid token",
-            "status code": status.HTTP_401_UNAUTHORIZED
+            "message": "Invalid token"
         }
 
-        return Response(response)
+        return Response(response, status = status.HTTP_401_UNAUTHORIZED)
 
 class RegisterView(generics.GenericAPIView):
 
@@ -99,11 +96,10 @@ class RegisterView(generics.GenericAPIView):
 
         response = {
             'user_data': user_data,
-            'token': str(token),
-            'status code': status.HTTP_201_CREATED,
+            'token': str(token), 
             'message': 'Registered successfully'
         }
-        return Response(response) 
+        return Response(response, status = status.HTTP_201_CREATED) 
 
 class VerifyEmail(views.APIView):
     
@@ -126,10 +122,9 @@ class VerifyEmail(views.APIView):
         if not token:
             return Response(
                 {
-                    'status': 'failure',
-                    'message': 'No token information obtained',
-                    'status code': status.HTTP_204_NO_CONTENT,
+                    'message': 'No token information obtained'
                 },
+                status = status.HTTP_204_NO_CONTENT
             )
 
         # print("Token = " + token)
@@ -138,35 +133,36 @@ class VerifyEmail(views.APIView):
             # print(payload)
             user = User.objects.get(id = payload['user_id'])
 
+            if user.is_verified:
+                response = {
+                    'message': 'Email was already confirmed'
+                }
+
+                return Response(response, status = status.HTTP_302_FOUND)
+
             if not user.is_verified:
                 user.is_verified = True
                 user.save()
 
             response = {
-                'status': 'success',
-                'message': 'Email Successfully activated',
-                'status code': status.HTTP_200_OK
+                'message': 'Email Successfully activated'
             }
 
-            return Response(response) 
+            return Response(response, status = status.HTTP_200_OK) 
 
         except jwt.ExpiredSignatureError:
             response = {
-                'status': 'failure',
-                'message': 'Activation link expired',
-                'status code': status.HTTP_400_BAD_REQUEST
+                'message': 'Activation link expired'
             }
 
-            return Response(response)
+            return Response(response, status = status.HTTP_400_BAD_REQUEST)
 
         except jwt.exceptions.DecodeError:
             response = {
-                'status': 'failure',
-                'message':'Invalid token',
-                'status code': status.HTTP_400_BAD_REQUEST
+                'message':'Invalid token'
             }
 
-            return Response(response)
+            return Response(response, status = status.HTTP_400_BAD_REQUEST)
 
 class LoginAPIView(generics.GenericAPIView):
 
@@ -191,20 +187,53 @@ class LogoutAPIView(views.APIView):
             token.blacklist()
 
             response = {
-                'status': 'success',
-                'message':'logged out successfully and token blacklisted',
-                'status code': status.HTTP_200_OK
+                'message':'logged out successfully and token blacklisted'
             }
-            return Response(response)
+            return Response(response, status = status.HTTP_200_OK)
             
         except Exception:
             response = {
-                'status': 'failure',
-                'message':'logout not successful',
-                'status code': status.HTTP_400_BAD_REQUEST
+                'message':'logout not successful'
             }
 
-            return Response(response)
+            return Response(response, status = status.HTTP_400_BAD_REQUEST)
+
+def valid_password_checker(user, old_password, new_password):
+
+    if not user.check_password(old_password):
+        response = {
+            "message": "Wrong password."
+        }
+        return Response(response, status = status.HTTP_400_BAD_REQUEST)
+
+    if old_password == new_password:
+        response = {
+            "message":"New password is same as old password"
+        }
+        return Response(response, status = status.HTTP_400_BAD_REQUEST)
+
+    if len(new_password) < 8:
+        response = {
+            "message":"Password length should be greater than 8 characters"
+        }
+        return Response(response, status = status.HTTP_400_BAD_REQUEST)
+
+    if not has_alphabets(new_password):
+        response = {
+            "message":"Password should contain alphabets"
+        }
+        return Response(response, status = status.HTTP_400_BAD_REQUEST)
+
+    if not has_numbers(new_password):
+        response = {
+            "message":"Password should contain digits"
+        }
+        return Response(response, status = status.HTTP_400_BAD_REQUEST)
+
+    response = {
+        "message":"New Password is valid"
+    }
+    return Response(response, status = status.HTTP_200_OK)
 
 class ChangePasswordView(generics.UpdateAPIView):
 
@@ -223,61 +252,20 @@ class ChangePasswordView(generics.UpdateAPIView):
             old_password = serializer.data.get("old_password")
             new_password = serializer.data.get("new_password")
 
-            if not user.check_password(old_password):
-                response = {
-                    'status': 'failure',
-                    "message": "Wrong password.",
-                    "status code": status.HTTP_400_BAD_REQUEST
-                }
-
-                return Response(response)
-
-            if old_password == new_password:
-                response = {
-                    'status': 'failure',
-                    "message":"New password is same as old password",
-                    "status code": status.HTTP_400_BAD_REQUEST
-                }
-
-                return Response(response)
-
-            if len(new_password) < 8:
-                response = {
-                    'status': 'failure',
-                    "message":"Password length should be greater than 8 characters",
-                    "status code": status.HTTP_400_BAD_REQUEST
-                }
-
-                return Response(response)
-
-            if not has_alphabets(new_password):
-                response = {
-                    'status': 'failure',
-                    "message":"Password should contain alphabets",
-                    "status code": status.HTTP_400_BAD_REQUEST
-                }
-
-                return Response(response)
-
-            if not has_numbers(new_password):
-                response = {
-                    'status': 'failure',
-                    "message":"Password should contain digits",
-                    "status code": status.HTTP_400_BAD_REQUEST
-                }
-
-                return Response(response)
+            isNewPasswordValid = valid_password_checker(user, old_password, new_password)
 
             # set_password also hashes the password that the user will get
-            user.set_password(new_password)
-            user.save()
+            if isNewPasswordValid.status_code == 200:
+                
+                user.set_password(new_password)
+                user.save()
 
-            response = {
-                'status': 'success',
-                'status code': status.HTTP_200_OK,
-                'message': 'Password updated successfully',
-            }
+                response = {
+                    'message': 'Password updated successfully'
+                }
+                return Response(response, status = status.HTTP_200_OK)
 
-            return Response(response)
+            else:
+                return Response(isNewPasswordValid.data, status = isNewPasswordValid.status_code)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
