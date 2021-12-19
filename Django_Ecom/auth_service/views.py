@@ -28,6 +28,35 @@ def has_numbers(inputString):
 def has_alphabets(inputString):
     return any(char.isalpha() for char in inputString)
 
+def get_user_from_token(token):
+
+    try:
+        if token.split(' ')[0] == 'Bearer':
+            token = token.split(' ')[1]
+            
+        else:
+            response = {
+                'status': 'failure',
+                "message": "Invalid token",
+                "status code": status.HTTP_401_UNAUTHORIZED
+            }
+
+            return Response(response)
+
+        payload = jwt.decode(token, os.environ.get('SECRET_KEY'), algorithms=["HS256"])
+        # print(payload)
+        user = User.objects.get(id = payload['user_id'])
+        return user
+    
+    except Exception:
+        response = {
+            'status': 'failure',
+            "message": "Invalid token",
+            "status code": status.HTTP_401_UNAUTHORIZED
+        }
+
+        return Response(response)
+
 class RegisterView(generics.GenericAPIView):
 
     serializer_class = RegisterSerializer
@@ -182,22 +211,10 @@ class ChangePasswordView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ChangePasswordSerializer
 
-    def get_object(self, queryset=None):
-        try:
-            obj = self.request.user
-            return obj
-
-        except Exception:
-            response = {
-                'status': 'failure',
-                "message": "Not logged in",
-                "status code": status.HTTP_401_UNAUTHORIZED
-            }
-
-            return Response(response)
-
     def patch(self, request):
-        self.object = self.get_object()
+        token = request.headers.get('Authorization')
+        user = get_user_from_token(token)
+        
         serializer = self.serializer_class(data = request.data)
         serializer.is_valid(raise_exception = True)
 
@@ -206,7 +223,7 @@ class ChangePasswordView(generics.UpdateAPIView):
             old_password = serializer.data.get("old_password")
             new_password = serializer.data.get("new_password")
 
-            if not self.object.check_password(old_password):
+            if not user.check_password(old_password):
                 response = {
                     'status': 'failure',
                     "message": "Wrong password.",
@@ -252,8 +269,8 @@ class ChangePasswordView(generics.UpdateAPIView):
                 return Response(response)
 
             # set_password also hashes the password that the user will get
-            self.object.set_password(new_password)
-            self.object.save()
+            user.set_password(new_password)
+            user.save()
 
             response = {
                 'status': 'success',
