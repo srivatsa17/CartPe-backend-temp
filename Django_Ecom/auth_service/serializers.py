@@ -68,9 +68,10 @@ class EmailVerificationSerializer(serializers.ModelSerializer):
         fields = ['token']
 
 class ChangePasswordSerializer(serializers.ModelSerializer):
-    old_password = serializers.CharField(required = True)
-    new_password = serializers.CharField(required = True)
+    old_password = serializers.CharField(min_length = 6, max_length = 255, required = True)
+    new_password = serializers.CharField(min_length = 6, max_length = 255, required = True)
+    confirm_password = serializers.CharField(min_length = 6, max_length = 255, required = True)
 
     class Meta:
         model = User
-        fields = ['old_password', 'new_password']
+        fields = ['old_password', 'new_password', 'confirm_password']

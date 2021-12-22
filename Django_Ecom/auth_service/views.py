@@ -7,7 +7,6 @@ from .serializers import RegisterSerializer, LoginSerializer, EmailVerificationS
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
-from .utils import Util
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 import jwt
@@ -19,14 +18,34 @@ from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.core.mail import EmailMultiAlternatives
-from django.contrib.auth.decorators import login_required
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_text
+from .tokens import account_activation_token
 
 # Create your views here.
+#############################################################
+#
+#   Function for validating digits
+#
+#############################################################
+
 def has_numbers(inputString):
     return any(char.isdigit() for char in inputString)
 
+#############################################################
+#
+#   Function for validating alphabets
+#
+#############################################################
+
 def has_alphabets(inputString):
     return any(char.isalpha() for char in inputString)
+
+#############################################################
+#
+#   Function for validating bearer token
+#
+#############################################################
 
 def get_user_from_token(token):
 
@@ -54,6 +73,66 @@ def get_user_from_token(token):
 
         return Response(response, status = status.HTTP_401_UNAUTHORIZED)
 
+#############################################################
+#
+#   Function for validating passwords
+#
+#############################################################
+
+def valid_password_checker(user, old_password, new_password, confirm_password):
+
+    isValid = 1
+
+    if not user.check_password(old_password):
+        isValid = 0
+        response = {
+            "message": "Wrong password."
+        }
+
+    if old_password == new_password:
+        isValid = 0
+        response = {
+            "message":"New password is same as old password"
+        }
+
+    if len(new_password) < 8:
+        isValid = 0
+        response = {
+            "message":"Password length should be greater than 8 characters"
+        }
+
+    if not has_alphabets(new_password):
+        isValid = 0
+        response = {
+            "message":"Password should contain alphabets"
+        }
+
+    if not has_numbers(new_password):
+        isValid = 0
+        response = {
+            "message":"Password should contain digits"
+        }
+
+    if new_password != confirm_password:
+        isValid = 0
+        response = {
+            "message":"Passwords does not match"
+        }
+
+    if isValid == 1:
+        response = {
+            "message":"New Password is valid"
+        }
+        return Response(response, status = status.HTTP_200_OK)
+
+    return Response(response, status = status.HTTP_400_BAD_REQUEST)
+
+#############################################################
+#
+#   Function for registering a user account
+#
+#############################################################
+
 class RegisterView(generics.GenericAPIView):
 
     serializer_class = RegisterSerializer
@@ -68,26 +147,19 @@ class RegisterView(generics.GenericAPIView):
 
         user = User.objects.get(email = user_data['email'])
 
-        token = RefreshToken.for_user(user).access_token
+        domain = get_current_site(request).domain
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = account_activation_token.make_token(user)
 
-        # current_site = get_current_site(request).domain
-        # # relativeLink = reverse('email-verify')
-        # relativeLink = ''
-        # token = str(token)
-        # absurl = "http://localhost:3000/auth/email-verify/"+token
-        # email_body = 'Hi ' + user.username + ',\nUse link below to verify your email \n' + absurl
-
-        # data = {
-        #     'email_body': email_body,
-        #     'email_subject': 'Verify your email',
-        #     'email_to': user.email
-        # }
-
-        FRONTEND_URL = 'http://127.0.0.1:8000'
-        BACKEND_URL = 'http://127.0.0.1:8000'
-        verify_link = FRONTEND_URL + '/auth/email-verify/?token=' + str(token)
         subject, from_email, to = 'Verify Your Email', 'vatsaecommerce@gmail.com', user.email
-        html_content = render_to_string('auth_service/verify_email.html', {'verify_link':verify_link, 'base_url': FRONTEND_URL, 'backend_url': BACKEND_URL}) 
+        html_content = render_to_string(
+                        'auth_service/verify_email.html', 
+                        {
+                            'domain':domain,
+                            'uid':uid,
+                            'token':token
+                        }
+                    )
         text_content = strip_tags(html_content) 
 
         msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
@@ -96,10 +168,15 @@ class RegisterView(generics.GenericAPIView):
 
         response = {
             'user_data': user_data,
-            'token': str(token), 
             'message': 'Registered successfully'
         }
         return Response(response, status = status.HTTP_201_CREATED) 
+
+#############################################################
+#
+#   Function for verifying a user account
+#
+#############################################################
 
 class VerifyEmail(views.APIView):
     
@@ -113,56 +190,35 @@ class VerifyEmail(views.APIView):
                         )
 
     @swagger_auto_schema(manual_parameters=[token_param_config])
-    def get(self, request):
-        # data = json.loads(request.body.decode('utf-8'))
-        # print(data)
-        # token = data['token']
-        token = request.GET.get('token', '')
-
-        if not token:
-            return Response(
-                {
-                    'message': 'No token information obtained'
-                },
-                status = status.HTTP_204_NO_CONTENT
-            )
-
-        # print("Token = " + token)
+    def get(self, request, uidb64, token):
+        user = None
         try:
-            payload = jwt.decode(token, os.environ.get('SECRET_KEY'), algorithms=["HS256"])
-            # print(payload)
-            user = User.objects.get(id = payload['user_id'])
+            uid = force_text(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk = uid)
 
-            if user.is_verified:
-                response = {
-                    'message': 'Email was already confirmed'
-                }
+        except Exception:
+            user = None
 
-                return Response(response, status = status.HTTP_302_FOUND)
-
-            if not user.is_verified:
-                user.is_verified = True
-                user.save()
+        if user is not None and account_activation_token.check_token(user, token):
+            user.is_verified = True
+            user.save()
 
             response = {
-                'message': 'Email Successfully activated'
+                "message":"Email activated successfully"
             }
+            return Response(response, template_name='', status = status.HTTP_200_OK)
 
-            return Response(response, status = status.HTTP_200_OK) 
-
-        except jwt.ExpiredSignatureError:
+        else:
             response = {
-                'message': 'Activation link expired'
+                "message":"Activation link is invalid"
             }
+            return Response(response, template_name='', status = status.HTTP_400_BAD_REQUEST)
 
-            return Response(response, status = status.HTTP_400_BAD_REQUEST)
-
-        except jwt.exceptions.DecodeError:
-            response = {
-                'message':'Invalid token'
-            }
-
-            return Response(response, status = status.HTTP_400_BAD_REQUEST)
+#############################################################
+#
+#   Function for logging in a user
+#
+#############################################################
 
 class LoginAPIView(generics.GenericAPIView):
 
@@ -177,8 +233,14 @@ class LoginAPIView(generics.GenericAPIView):
             status = status.HTTP_200_OK
         )
 
+#############################################################
+#
+#   Function for logging out a user
+#
+#############################################################
+
 class LogoutAPIView(views.APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
@@ -187,53 +249,22 @@ class LogoutAPIView(views.APIView):
             token.blacklist()
 
             response = {
-                'message':'logged out successfully and token blacklisted'
+                "message":"logged out successfully"
             }
             return Response(response, status = status.HTTP_200_OK)
             
         except Exception:
             response = {
-                'message':'logout not successful'
+                "message":"logout not successful"
             }
 
             return Response(response, status = status.HTTP_400_BAD_REQUEST)
 
-def valid_password_checker(user, old_password, new_password):
-
-    if not user.check_password(old_password):
-        response = {
-            "message": "Wrong password."
-        }
-        return Response(response, status = status.HTTP_400_BAD_REQUEST)
-
-    if old_password == new_password:
-        response = {
-            "message":"New password is same as old password"
-        }
-        return Response(response, status = status.HTTP_400_BAD_REQUEST)
-
-    if len(new_password) < 8:
-        response = {
-            "message":"Password length should be greater than 8 characters"
-        }
-        return Response(response, status = status.HTTP_400_BAD_REQUEST)
-
-    if not has_alphabets(new_password):
-        response = {
-            "message":"Password should contain alphabets"
-        }
-        return Response(response, status = status.HTTP_400_BAD_REQUEST)
-
-    if not has_numbers(new_password):
-        response = {
-            "message":"Password should contain digits"
-        }
-        return Response(response, status = status.HTTP_400_BAD_REQUEST)
-
-    response = {
-        "message":"New Password is valid"
-    }
-    return Response(response, status = status.HTTP_200_OK)
+#############################################################
+#
+#   Function for changing a user password
+#
+#############################################################
 
 class ChangePasswordView(generics.UpdateAPIView):
 
@@ -248,11 +279,11 @@ class ChangePasswordView(generics.UpdateAPIView):
         serializer.is_valid(raise_exception = True)
 
         if serializer.is_valid():
-            # Check old password
             old_password = serializer.data.get("old_password")
             new_password = serializer.data.get("new_password")
+            confirm_password = serializer.data.get("confirm_password")
 
-            isNewPasswordValid = valid_password_checker(user, old_password, new_password)
+            isNewPasswordValid = valid_password_checker(user, old_password, new_password, confirm_password)
 
             # set_password also hashes the password that the user will get
             if isNewPasswordValid.status_code == 200:

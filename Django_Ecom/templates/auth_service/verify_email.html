@@ -124,9 +124,6 @@
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
           <tr>
             <td align="center" valign="top" style="padding: 36px 24px;">
-              <a href={{base_url}} target="_blank" style="display: inline-block;">
-                Ecom
-              </a>
             </td>
           </tr>
         </table>
@@ -190,7 +187,9 @@
                     <table border="0" cellpadding="0" cellspacing="0">
                       <tr>
                         <td align="center" bgcolor="#1a82e2" style="border-radius: 6px;">
-                          <a href={{verify_link}} target="_blank" style="display: inline-block; padding: 16px 36px; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; border-radius: 6px;">Verify</a>
+                          <a href="http://{{ domain }}{% url 'auth_service:email-verify' uidb64=uid token=token %}" target="_blank" style="display: inline-block; padding: 16px 36px; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; border-radius: 6px;">
+                            Verify
+                          </a>
                         </td>
                       </tr>
                     </table>
@@ -205,7 +204,11 @@
           <tr>
             <td align="left" bgcolor="#ffffff" style="padding: 24px; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 24px;">
               <p style="margin: 0;">If that doesn't work, copy and paste the following link in your browser:</p>
-              <p style="margin: 0;"><a href={{verify_link}} target="_blank">{{verify_link}}</a></p>
+              <p style="margin: 0;">
+                <a href="http://{{ domain }}{% url 'auth_service:email-verify' uidb64=uid token=token %}" target="_blank">
+                  http://{{ domain }}{% url 'auth_service:email-verify' uidb64=uid token=token %}
+                </a>
+              </p>
             </td>
           </tr>
           <!-- end copy -->
