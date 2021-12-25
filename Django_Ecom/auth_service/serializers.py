@@ -75,3 +75,18 @@ class ChangePasswordSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['old_password', 'new_password', 'confirm_password']
+
+class ResetPasswordSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(min_length = 6, max_length = 255, required = True)
+
+    class Meta:
+        model = User
+        fields = ['email']
+
+class ResetPasswordConfirmSerializer(serializers.ModelSerializer):
+    new_password = serializers.CharField(min_length = 6, max_length = 255, required = True)
+    confirm_password = serializers.CharField(min_length = 6, max_length = 255, required = True)
+
+    class Meta:
+        model = User
+        fields = ['new_password', 'confirm_password']

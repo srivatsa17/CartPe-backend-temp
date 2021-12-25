@@ -3,7 +3,10 @@ from django.shortcuts import render
 from rest_framework import generics, status, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.serializers import Serializer
-from .serializers import RegisterSerializer, LoginSerializer, EmailVerificationSerializer, ChangePasswordSerializer
+from .serializers import ( RegisterSerializer, LoginSerializer, 
+                            EmailVerificationSerializer, ChangePasswordSerializer, 
+                            ResetPasswordSerializer, ResetPasswordConfirmSerializer
+                        )
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
@@ -20,7 +23,7 @@ from django.utils.html import strip_tags
 from django.core.mail import EmailMultiAlternatives
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_text
-from .tokens import account_activation_token
+from .tokens import account_activation_token, password_reset_token
 
 # Create your views here.
 #############################################################
@@ -83,19 +86,19 @@ def valid_password_checker(user, old_password, new_password, confirm_password):
 
     isValid = 1
 
-    if not user.check_password(old_password):
+    if old_password is not None and not user.check_password(old_password):
         isValid = 0
         response = {
             "message": "Wrong password."
         }
 
-    if old_password == new_password:
+    if old_password is not None and old_password == new_password:
         isValid = 0
         response = {
             "message":"New password is same as old password"
         }
 
-    if len(new_password) < 8:
+    if len(new_password) < 8 or len(confirm_password) < 8:
         isValid = 0
         response = {
             "message":"Password length should be greater than 8 characters"
@@ -206,13 +209,13 @@ class VerifyEmail(views.APIView):
             response = {
                 "message":"Email activated successfully"
             }
-            return Response(response, template_name='', status = status.HTTP_200_OK)
+            return Response(response, status = status.HTTP_200_OK)
 
         else:
             response = {
                 "message":"Activation link is invalid"
             }
-            return Response(response, template_name='', status = status.HTTP_400_BAD_REQUEST)
+            return Response(response, status = status.HTTP_400_BAD_REQUEST)
 
 #############################################################
 #
@@ -300,3 +303,139 @@ class ChangePasswordView(generics.UpdateAPIView):
                 return Response(isNewPasswordValid.data, status = isNewPasswordValid.status_code)
 
         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+
+#############################################################
+#
+#   Function for reseting a user password
+#
+#############################################################
+
+class ResetPasswordView(views.APIView):
+    
+    permission_classes = [AllowAny]
+    serializer_class = ResetPasswordSerializer
+
+    def post(self, request):
+
+        serializer = self.serializer_class(data = request.data)
+        serializer.is_valid(raise_exception = True)
+
+        if serializer.is_valid():
+            email = serializer.data['email']
+        
+            try:
+                user = User.objects.get(email = email)
+
+            except Exception:
+                user = None
+
+                response = {
+                    "message":"Email does not exist"
+                }            
+                return Response(response, status = status.HTTP_404_NOT_FOUND)
+
+            if user:
+
+                domain = get_current_site(request).domain
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                token = password_reset_token.make_token(user)
+
+                subject, from_email, to = 'Reset your password', 'vatsaecommerce@gmail.com', user.email
+                html_content = render_to_string(
+                                'auth_service/reset_password_email.html', 
+                                {
+                                    'domain':domain,
+                                    'uid':uid,
+                                    'token':token
+                                }
+                            )
+                text_content = strip_tags(html_content) 
+
+                msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
+                msg.attach_alternative(html_content, "text/html")
+                msg.send()
+
+                response = {
+                    "message":"Password reset link sent to email"
+                }
+                return Response(response, status = status.HTTP_200_OK)
+
+            response = {
+                "message":"Password reset request failed"
+            }
+            return Response(response, status = status.HTTP_400_BAD_REQUEST)
+
+        return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+
+#############################################################
+#
+#   Function for confirm reseting a user password
+#
+#############################################################
+
+class ResetPasswordConfirmView(generics.UpdateAPIView):
+
+    permission_classes = [AllowAny]
+    serializer_class = ResetPasswordConfirmSerializer
+
+    def post(self, request, uidb64, token):
+
+        try:
+            uid = force_text(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk = uid)
+
+        except Exception:
+            user = None
+
+        if user is not None and password_reset_token.check_token(user, token):
+            serializer = self.serializer_class(data = request.data)
+            serializer.is_valid(raise_exception = True)
+
+            if serializer.is_valid():
+                new_password = serializer.data['new_password']
+                confirm_password = serializer.data['confirm_password']
+
+                isNewPasswordValid = valid_password_checker(user, None, new_password, confirm_password)
+
+                # set_password also hashes the password that the user will get
+                if isNewPasswordValid.status_code == 200:
+                    
+                    user.set_password(new_password)
+                    user.save()
+
+                    response = {
+                        'message': 'Password updated successfully'
+                    }
+                    return Response(response, status = status.HTTP_200_OK)
+
+                else:
+                    return Response(isNewPasswordValid.data, status = isNewPasswordValid.status_code)
+
+            return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+
+        else:
+            response = {
+                "message":"Invalid token"
+            }
+            return Response(response, status = status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, uidb64, token):
+
+        try:
+            uid = force_text(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk = uid)
+
+        except Exception:
+            user = None
+
+        if user is not None and password_reset_token.check_token(user, token):
+            response = {
+                "message":"Valid token"
+            }
+            return Response(response, status = status.HTTP_200_OK)
+
+        else:
+            response = {
+                "message":"Invalid token"
+            }
+            return Response(response, status = status.HTTP_400_BAD_REQUEST)
