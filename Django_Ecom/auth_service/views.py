@@ -325,6 +325,8 @@ class ResetPasswordView(views.APIView):
         
             try:
                 user = User.objects.get(email = email)
+                user.password_reset_requested = True
+                user.save()
 
             except Exception:
                 user = None
@@ -401,6 +403,7 @@ class ResetPasswordConfirmView(generics.UpdateAPIView):
                 if isNewPasswordValid.status_code == 200:
                     
                     user.set_password(new_password)
+                    user.password_reset_requested = False
                     user.save()
 
                     response = {
