@@ -3,7 +3,7 @@ from django.shortcuts import render
 from rest_framework import generics, status, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.serializers import Serializer
-from .serializers import ( RegisterSerializer, LoginSerializer, 
+from .serializers import ( RegisterSerializer, LoginSerializer,
                             EmailVerificationSerializer, ChangePasswordSerializer, 
                             ResetPasswordSerializer, ResetPasswordConfirmSerializer
                         )
@@ -254,11 +254,11 @@ class LogoutAPIView(views.APIView):
             response = {
                 "message":"logged out successfully"
             }
-            return Response(response, status = status.HTTP_200_OK)
+            return Response(response, status = status.HTTP_204_NO_CONTENT)
             
         except Exception:
             response = {
-                "message":"logout not successful"
+                "message":"Token is expired or invalid"
             }
 
             return Response(response, status = status.HTTP_400_BAD_REQUEST)

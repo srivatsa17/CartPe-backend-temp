@@ -12,7 +12,9 @@ class UserAdmin(admin.ModelAdmin):
         'is_verified',
         'is_staff',
         'created_at',
-        'updated_at'
+        'updated_at',
+        'auth_provider',
+        'password_reset_requested'
     ]
 
 admin.site.register(User, UserAdmin)

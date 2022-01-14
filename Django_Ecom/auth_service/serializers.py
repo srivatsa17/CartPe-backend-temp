@@ -33,7 +33,6 @@ class LoginSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(max_length = 255, min_length = 3)
     username = serializers.CharField(max_length = 255, min_length = 3, read_only = True)
     password = serializers.CharField(max_length = 68, min_length = 6, write_only = True)
-    tokens = serializers.CharField(max_length = 150, min_length = 6, read_only = True)
 
     class Meta:
         model = User
@@ -55,9 +54,9 @@ class LoginSerializer(serializers.ModelSerializer):
             raise AuthenticationFailed('Email is not verified')
         
         return {
-            'email':user.email,
-            'username':user.username,
-            'tokens':user.tokens
+            'email': user.email,
+            'username': user.username,
+            'tokens': user.tokens()
         }
         
 class EmailVerificationSerializer(serializers.ModelSerializer):

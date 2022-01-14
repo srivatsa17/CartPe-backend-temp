@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'corsheaders',
     'auth_service',
+    'social_auth',
 ]
 
 MIDDLEWARE = [
