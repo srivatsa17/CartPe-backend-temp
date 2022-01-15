@@ -20,7 +20,7 @@ class GoogleSocialAuthSerializer(serializers.Serializer):
             user_data['sub']
         
         except ConnectionError:
-            return "Could not connect to google api endpoint"
+            raise serializers.ValidationError("Could not connect to google api endpoint")
 
         except:
             raise serializers.ValidationError(

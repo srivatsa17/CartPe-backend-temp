@@ -1,10 +1,6 @@
-from django.shortcuts import render
-from rest_framework import generics, status, views
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework import generics, status
 from rest_framework.response import Response
 from .serializers import GoogleSocialAuthSerializer
-import requests, json
-from types import SimpleNamespace
 
 # Create your views here.
 class GoogleLoginView(generics.GenericAPIView):
@@ -18,6 +14,3 @@ class GoogleLoginView(generics.GenericAPIView):
         data = serializer.validated_data
         
         return Response(data, status = status.HTTP_200_OK)
-        
-
-        
