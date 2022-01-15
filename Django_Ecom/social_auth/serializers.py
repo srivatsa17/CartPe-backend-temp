@@ -8,8 +8,8 @@ from requests import ConnectionError
 class GoogleSocialAuthSerializer(serializers.Serializer):
     token = serializers.CharField()
     
-    def validate(self, token):
-        tokenValue = token['token']
+    def validate(self, attrs):
+        tokenValue = attrs.get('token', '')
 
         try:
             requestURL = 'https://oauth2.googleapis.com/tokeninfo'
@@ -77,8 +77,8 @@ def getNameFromGithubApi(githubAccessToken):
 class GithubSocialAuthSerializer(serializers.Serializer):
     token = serializers.CharField()
 
-    def validate(self, token):
-        tokenValue = token['token']
+    def validate(self, attrs):
+        tokenValue = attrs.get('token', '')
 
         try:
             requestURL = 'https://github.com/login/oauth/access_token'
