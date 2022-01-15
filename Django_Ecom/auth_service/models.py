@@ -44,6 +44,7 @@ AUTH_PROVIDERS = {
     'facebook': 'facebook',
     'google': 'google',
     'twitter': 'twitter',
+    'github': 'github',
     'email': 'email'
 }
 

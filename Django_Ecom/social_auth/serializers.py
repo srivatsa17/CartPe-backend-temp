@@ -38,3 +38,70 @@ class GoogleSocialAuthSerializer(serializers.Serializer):
         provider = 'google'
 
         return register_social_user(provider = provider, email = email, name = name) 
+
+def getEmailFromGithubApi(githubAccessToken):
+    requestURL = 'https://api.github.com/user/emails'
+    requestHeaders = {'Authorization': 'Bearer ' + githubAccessToken}
+    request = requests.get(requestURL, headers = requestHeaders)
+
+    if request.status_code == 200:
+        response = request.json()
+
+        for jsonObject in response:
+            if jsonObject['primary'] == True:
+                email = jsonObject['email']
+                break
+
+    else:
+        raise serializers.ValidationError(
+            'The token is invalid or expired. Please login again.'
+        )
+
+    return email
+
+def getNameFromGithubApi(githubAccessToken):
+    requestURL = 'https://api.github.com/user'
+    requestHeaders = {'Authorization': 'Bearer ' + githubAccessToken}
+    request = requests.get(requestURL, headers = requestHeaders)
+
+    if request.status_code == 200:
+        response = request.json()
+
+    else:
+        raise serializers.ValidationError(
+            'The token is invalid or expired. Please login again.'
+        )
+
+    return response['name']
+
+class GithubSocialAuthSerializer(serializers.Serializer):
+    token = serializers.CharField()
+
+    def validate(self, token):
+        tokenValue = token['token']
+
+        try:
+            requestURL = 'https://github.com/login/oauth/access_token'
+            requestParams = {
+                'client_id': os.environ.get('GITHUB_CLIENT_ID'),
+                'redirect_uri': os.environ.get('GITHUB_REDIRECT_URI'),
+                'client_secret': os.environ.get('GITHUB_CLIENT_SECRET'),
+                'code': tokenValue
+            }
+            requestHeaders = {'content-type': 'application/json'}
+            request = requests.post(requestURL, params=requestParams, headers=requestHeaders)
+            githubAccessToken = request.text.split('&')[0].split('=')[1]
+
+            email = getEmailFromGithubApi(githubAccessToken)
+            name = getNameFromGithubApi(githubAccessToken)
+            provider = 'github'
+
+        except ConnectionError:
+            raise serializers.ValidationError("Could not connect to github api endpoint")
+
+        except:
+            raise serializers.ValidationError(
+                'The token is invalid or expired. Please login again...'
+            )
+
+        return register_social_user(provider = provider, email = email, name = name) 
