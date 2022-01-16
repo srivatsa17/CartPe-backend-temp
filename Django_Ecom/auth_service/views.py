@@ -247,6 +247,13 @@ class LogoutAPIView(views.APIView):
     serializer_class = LogoutSerializer
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            required=['refresh_token'],
+                            properties={
+                                'refresh_token': openapi.Schema(type=openapi.TYPE_STRING)
+                            },
+                        ))
     def post(self, request):
         try:
             serializer = self.serializer_class(data = request.data)
@@ -321,6 +328,13 @@ class ResetPasswordView(views.APIView):
     permission_classes = [AllowAny]
     serializer_class = ResetPasswordSerializer
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            required=['email'],
+                            properties={
+                                'email': openapi.Schema(type=openapi.TYPE_STRING)
+                            },
+                        ))
     def post(self, request):
 
         serializer = self.serializer_class(data = request.data)
