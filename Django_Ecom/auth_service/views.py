@@ -3,7 +3,7 @@ from django.shortcuts import render
 from rest_framework import generics, status, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.serializers import Serializer
-from .serializers import ( RegisterSerializer, LoginSerializer,
+from .serializers import ( RegisterSerializer, LoginSerializer, LogoutSerializer,
                             EmailVerificationSerializer, ChangePasswordSerializer, 
                             ResetPasswordSerializer, ResetPasswordConfirmSerializer
                         )
@@ -243,16 +243,22 @@ class LoginAPIView(generics.GenericAPIView):
 #############################################################
 
 class LogoutAPIView(views.APIView):
+
+    serializer_class = LogoutSerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
-            refresh_token = request.data["refresh_token"]
+            serializer = self.serializer_class(data = request.data)
+            serializer.is_valid(raise_exception = True)
+            data = serializer.data
+            
+            refresh_token = data["refresh_token"]
             token = RefreshToken(refresh_token)
             token.blacklist()
 
             response = {
-                "message":"logged out successfully"
+                "message":"Logout successful"
             }
             return Response(response, status = status.HTTP_204_NO_CONTENT)
             

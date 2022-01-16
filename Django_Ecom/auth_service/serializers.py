@@ -58,7 +58,13 @@ class LoginSerializer(serializers.ModelSerializer):
             'username': user.username,
             'tokens': user.tokens()
         }
-        
+
+class LogoutSerializer(serializers.Serializer):
+    refresh_token = serializers.CharField()
+
+    class Meta:
+        fields = ['refresh_token']
+
 class EmailVerificationSerializer(serializers.ModelSerializer):
     token = serializers.CharField(max_length = 555)
 
