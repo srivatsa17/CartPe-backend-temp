@@ -24,6 +24,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_text
 from .tokens import account_activation_token, password_reset_token
+from customer_service.models import Customer
 
 # Create your views here.
 #############################################################
@@ -149,6 +150,13 @@ class RegisterView(generics.GenericAPIView):
         user_data = serializer.data
 
         user = User.objects.get(email = user_data['email'])
+
+        customer = Customer()
+        customer.user = user
+        customer.first_name = user.first_name
+        customer.last_name = user.last_name
+        customer.email = user.email
+        customer.save()
 
         domain = get_current_site(request).domain
         uid = urlsafe_base64_encode(force_bytes(user.pk))

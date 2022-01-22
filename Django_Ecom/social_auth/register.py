@@ -3,7 +3,7 @@ from auth_service.models import User
 import os
 import random
 from rest_framework.exceptions import AuthenticationFailed
-
+from customer_service.models import Customer
 
 def generate_username(name):
 
@@ -52,6 +52,13 @@ def register_social_user(provider, email, name):
         user.is_verified = True
         user.auth_provider = provider
         user.save()
+
+        customer = Customer()
+        customer.user = user
+        customer.first_name = user.first_name
+        customer.last_name = user.last_name
+        customer.email = user.email
+        customer.save()
 
         new_user = auth.authenticate(
             email = email, password = os.environ.get('SOCIAL_SECRET'))

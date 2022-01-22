@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'auth_service',
     'social_auth',
+    'customer_service',
 ]
 
 MIDDLEWARE = [
@@ -208,3 +209,11 @@ SWAGGER_SETTINGS = {
         }
     },
 }
+
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static')
+]
+
+MEDIA_URL = '/images/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'static/images')
