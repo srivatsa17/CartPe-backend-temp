@@ -470,3 +470,26 @@ class ResetPasswordConfirmView(generics.UpdateAPIView):
                 "message":"Invalid token"
             }
             return Response(response, status = status.HTTP_400_BAD_REQUEST)
+
+class DeleteUserAccount(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        try:
+            token = request.headers.get('Authorization')
+            user = get_user_from_token(token)
+            user.is_active = False
+            user.save()
+
+            response = {
+                "message":"Account deactivated successfully"
+            }
+
+            return Response(response, status = status.HTTP_204_NO_CONTENT)
+
+        except Exception:
+            response = {
+                "message":"Token has expired or is invalid"
+            }
+
+            return Response(response, status = status.HTTP_401_UNAUTHORIZED)

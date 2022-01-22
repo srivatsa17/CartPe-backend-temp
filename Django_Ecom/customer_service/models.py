@@ -19,7 +19,7 @@ class Customer(models.Model):
     profile_pic = models.ImageField(default = "guest-user-pic.jpg", null = True, blank = True)  
 
     def __str__(self):
-        return str(self.name)
+        return str(self.email)
 
     @property
     def get_profile_picture(self):

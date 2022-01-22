@@ -41,7 +41,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include('auth_service.urls', namespace='auth_service')),
     path('social_auth/', include('social_auth.urls', namespace='social_auth')),
-    path('customer/', include('customer_service.urls', namespace='customer_service')),
+    path('user/', include('customer_service.urls', namespace='customer_service')),
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
