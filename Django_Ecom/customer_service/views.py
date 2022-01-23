@@ -110,3 +110,35 @@ class UpdateCustomerInfo(generics.UpdateAPIView):
             }
 
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+
+        token = request.headers.get('Authorization')
+        user = get_user_from_token(token)
+
+        try:
+            customer = Customer.objects.get(email = user)
+
+            data = {
+                "email":customer.email,
+                "first_name":customer.first_name,
+                "last_name":customer.last_name,
+                "gender":customer.gender,
+                "phone":customer.phone
+            }
+
+            response = {
+                "data": data,
+                "message": "User info obtained successfully"
+            }
+
+            return Response(response, status = status.HTTP_200_OK)
+
+        except Exception:
+            customer = None
+
+            response = {
+                "message": "Invalid user"
+            }
+
+            return Response(response, status = status.HTTP_401_UNAUTHORIZED)

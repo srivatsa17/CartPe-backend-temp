@@ -25,6 +25,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_text
 from .tokens import account_activation_token, password_reset_token
 from customer_service.models import Customer
+from .email import send_email
 
 # Create your views here.
 #############################################################
@@ -158,24 +159,21 @@ class RegisterView(generics.GenericAPIView):
         customer.email = user.email
         customer.save()
 
+        #Sending email for verification
+        subject = 'Verify Your Email'
+        to = user.email
+        template = 'auth_service/verify_email.html'
         domain = get_current_site(request).domain
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = account_activation_token.make_token(user)
 
-        subject, from_email, to = 'Verify Your Email', 'vatsaecommerce@gmail.com', user.email
-        html_content = render_to_string(
-                        'auth_service/verify_email.html', 
-                        {
-                            'domain':domain,
-                            'uid':uid,
-                            'token':token
-                        }
-                    )
-        text_content = strip_tags(html_content) 
+        email_response = send_email(subject, to, template, domain, uid, token)
 
-        msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
-        msg.attach_alternative(html_content, "text/html")
-        msg.send()
+        if email_response['status'] == 400:
+            response = {
+                "message":"Unable to register user"
+            }
+            return Response(response, status = status.HTTP_400_BAD_REQUEST)
 
         response = {
             'user_data': user_data,
@@ -366,24 +364,20 @@ class ResetPasswordView(views.APIView):
 
             if user:
 
+                subject = 'Reset your password'
+                to = user.email
+                template = 'auth_service/reset_password_email.html'
                 domain = get_current_site(request).domain
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
                 token = password_reset_token.make_token(user)
 
-                subject, from_email, to = 'Reset your password', 'vatsaecommerce@gmail.com', user.email
-                html_content = render_to_string(
-                                'auth_service/reset_password_email.html', 
-                                {
-                                    'domain':domain,
-                                    'uid':uid,
-                                    'token':token
-                                }
-                            )
-                text_content = strip_tags(html_content) 
+                email_response = send_email(subject, to, template, domain, uid, token)
 
-                msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
-                msg.attach_alternative(html_content, "text/html")
-                msg.send()
+                if email_response['status'] == 400:
+                    response = {
+                        "message":"Unable to reset password"
+                    }
+                    return Response(response, status = status.HTTP_400_BAD_REQUEST)
 
                 response = {
                     "message":"Password reset link sent to email"
@@ -471,10 +465,16 @@ class ResetPasswordConfirmView(generics.UpdateAPIView):
             }
             return Response(response, status = status.HTTP_400_BAD_REQUEST)
 
-class DeleteUserAccount(generics.GenericAPIView):
+#############################################################
+#
+#   Function for deactivate user account
+#
+#############################################################
+
+class DeactivateUserAccount(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request):
+    def patch(self, request):
         try:
             token = request.headers.get('Authorization')
             user = get_user_from_token(token)
@@ -483,6 +483,35 @@ class DeleteUserAccount(generics.GenericAPIView):
 
             response = {
                 "message":"Account deactivated successfully"
+            }
+
+            return Response(response, status = status.HTTP_204_NO_CONTENT)
+
+        except Exception:
+            response = {
+                "message":"Token has expired or is invalid"
+            }
+
+            return Response(response, status = status.HTTP_401_UNAUTHORIZED)
+
+#############################################################
+#
+#   Function for deleting user account
+#
+#############################################################
+
+class DeleteUserAccount(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        try:
+            token = request.headers.get('Authorization')
+            user = get_user_from_token(token)
+
+            user.delete()
+
+            response = {
+                "message":"Account deleted successfully"
             }
 
             return Response(response, status = status.HTTP_204_NO_CONTENT)
